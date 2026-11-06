@@ -10,6 +10,11 @@
 bool do_system(const char *cmd)
 {
 
+    int rc = system(cmd);
+
+    if(rc != 0)
+	return false;
+
 /*
  * TODO  add your code here
  *  Call the system() function with the command set in the cmd
@@ -39,7 +44,7 @@ bool do_exec(int count, ...)
     va_list args;
     va_start(args, count);
     char * command[count+1];
-    int i;
+    int i, kidpid, rc;
     for(i=0; i<count; i++)
     {
         command[i] = va_arg(args, char *);
@@ -47,9 +52,21 @@ bool do_exec(int count, ...)
     command[count] = NULL;
     // this line is to avoid a compile warning before your implementation is complete
     // and may be removed
-    command[count] = command[count];
+//    command[count] = command[count];
 
-/*
+    kidpid = fork();
+    if(kidpid == -1)//fork failure
+	return false;
+    else if(kidpid == 0) {//child process
+        rc = execv(command[0], command);
+	exit(1);
+    }else
+        wait(&rc);
+
+    if(WEXITSTATUS(rc) == 1)
+    	    return false;
+
+ /*
  * TODO:
  *   Execute a system command by calling fork, execv(),
  *   and wait instead of system (see LSP page 161).
@@ -74,7 +91,7 @@ bool do_exec_redirect(const char *outputfile, int count, ...)
     va_list args;
     va_start(args, count);
     char * command[count+1];
-    int i;
+    int i, kidpid, fd;
     for(i=0; i<count; i++)
     {
         command[i] = va_arg(args, char *);
@@ -83,6 +100,25 @@ bool do_exec_redirect(const char *outputfile, int count, ...)
     // this line is to avoid a compile warning before your implementation is complete
     // and may be removed
     command[count] = command[count];
+
+    fd = open(outputfile, O_WRONLY|O_TRUNC|O_CREAT, 0644);
+    if(fd < 0)
+   	return false;
+
+    kidpid = fork();
+    if(kidpid == -1)//fork failure
+        return false;
+    else if(kidpid == 0) {//child process
+        if(dup2(fd, 1) < 0)
+	       return false;	
+        close(fd);
+        execv(command[0], command);
+        exit(1);
+    }else
+        wait(&i);
+
+    if(WEXITSTATUS(i) == 1)
+            return false;
 
 
 /*
