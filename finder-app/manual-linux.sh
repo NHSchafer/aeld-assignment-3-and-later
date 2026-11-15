@@ -103,7 +103,7 @@ ${CROSS_COMPILE}readelf -a bin/busybox | grep "Shared library"
 
 # TODO: Add library dependencies to rootfs
 cd ${FINDER_APP_DIR}
-CD ../conf
+cd ../conf
 cp ld-linux-aarch64.so.1 ${OUTDIR}/rootfs/lib/
 cp libm.so.6 ${OUTDIR}/rootfs/lib64/
 cp libresolv.so.2 ${OUTDIR}/rootfs/lib64/
