@@ -4,16 +4,42 @@
 #include <stdio.h>
 
 // Optional: use these functions to add debug or error prints to your application
-#define DEBUG_LOG(msg,...)
-//#define DEBUG_LOG(msg,...) printf("threading: " msg "\n" , ##__VA_ARGS__)
+//#define DEBUG_LOG(msg,...)
+#define DEBUG_LOG(msg,...) printf("threading: " msg "\n" , ##__VA_ARGS__)
 #define ERROR_LOG(msg,...) printf("threading ERROR: " msg "\n" , ##__VA_ARGS__)
 
 void* threadfunc(void* thread_param)
 {
-
     // TODO: wait, obtain mutex, wait, release mutex as described by thread_data structure
     // hint: use a cast like the one below to obtain thread arguments from your parameter
     //struct thread_data* thread_func_args = (struct thread_data *) thread_param;
+    
+    struct thread_data* thread_func_args = (struct thread_data *) thread_param;
+    int rc;
+   
+    DEBUG_LOG("Entered thread!!\n");
+    //wait
+    usleep(thread_func_args->wait_to_obtain_ms);//ms to us
+    //get mutex
+    rc = pthread_mutex_lock(thread_func_args->mutex);
+    if(rc == 0 ){
+        DEBUG_LOG("Obtained mutex!!\n");
+    }else    
+        DEBUG_LOG("Faileded mutex!!\n");
+    //wait
+    usleep(thread_func_args->wait_to_release_ms * 1000);//ms to us conversion
+    //release mutex
+    rc = pthread_mutex_unlock(thread_func_args->mutex);
+
+    if(rc != 0 ){
+        thread_func_args->thread_complete_success = false;
+        DEBUG_LOG("Failed unlock!!\n");
+        
+    }else{
+        thread_func_args->thread_complete_success = true;
+        DEBUG_LOG("All is good!!\n");
+    }
+
     return thread_param;
 }
 
@@ -28,6 +54,18 @@ bool start_thread_obtaining_mutex(pthread_t *thread, pthread_mutex_t *mutex,int 
      *
      * See implementation details in threading.h file comment block
      */
+    int rc;
+    struct thread_data *threadstruct = malloc(sizeof(struct thread_data));
+    
+    threadstruct->wait_to_obtain_ms = wait_to_obtain_ms;
+    threadstruct->wait_to_release_ms = wait_to_release_ms;
+    threadstruct->mutex = mutex;
+
+    rc = pthread_create(thread, NULL, &threadfunc, threadstruct);
+    
+    if(rc == 0)
+	return true;
+
     return false;
 }
 
