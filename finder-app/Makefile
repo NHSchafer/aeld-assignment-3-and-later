@@ -1,5 +1,6 @@
 CROSS_COMPILER = 
 
+all: default
 
 default : writer.o
 	$(CROSS_COMPILER)gcc -o writer writer.o
