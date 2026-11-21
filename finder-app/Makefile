@@ -1,4 +1,4 @@
-CROSS_COMPILER = 
+CROSS_COMPILER = aarch64-none-linux-gnu- 
 
 all: default
 
