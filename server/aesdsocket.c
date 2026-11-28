@@ -171,26 +171,25 @@ int main( int argc, char **argv)
 
 	while(1) {  // main accept() loop
 		sin_size = sizeof their_addr;
-		   // syslog(LOG_DEBUG, "PRE Accept\n");
 		new_fd = accept4(sockfd, (struct sockaddr *)&their_addr,
 				&sin_size, SOCK_NONBLOCK);
-		if (new_fd == -1) {
-		   // syslog(LOG_DEBUG, "FAILED Accept\n");
 		    
-		    if(caught_sigint || caught_sigterm){
-		        syslog(LOG_INFO, "Caught signal, exiting");
-		        //delete file
-		        if(remove(filepath) != 0)
-		    	syslog(LOG_ERR, "Error deleting file");
+		if(caught_sigint || caught_sigterm){
+		    syslog(LOG_INFO, "Caught signal, exiting");
+		    //delete file
+		    if(remove(filepath) != 0)
+			syslog(LOG_ERR, "Error deleting file");
 
-		        //close connections
-		        //close(new_fd);
-		        close(sockfd);
-		        syslog(LOG_DEBUG, "Closed sockets");
-		        //end program
-		        break;
-		    }
-			perror("accept");
+		    //close connections
+		    //close(new_fd);
+		    close(sockfd);
+		    syslog(LOG_DEBUG, "Closed sockets");
+		    //end program
+		    break;
+		}
+		
+		if (new_fd == -1) {
+			syslog(LOG_ERR, "Server: accept - Error %d (%s)", errno, strerror(errno));
 			continue;
 		}
 

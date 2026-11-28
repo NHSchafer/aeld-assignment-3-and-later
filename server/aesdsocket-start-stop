@@ -1,0 +1,5 @@
+#!/bin/sh
+
+#start-stop-daemon --exec /home/niklas/aeld-assignment-1/server/aesdsocket --signal TERM -S -- -d
+start-stop-daemon --exec /usr/bin/aesdsocket --signal TERM -S -- -d
+

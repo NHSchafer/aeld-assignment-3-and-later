@@ -1,8 +1,10 @@
 CFLAGS += -Wall -Werror
 
-all: default
+all: aesdsocket
 
-default : aesdsocket.o
+default : aesdsocket
+
+aesdsocket : aesdsocket.o
 	$(CC) $(CFLAGS) -o aesdsocket aesdsocket.o
 
 aesdsocket.o : aesdsocket.c
