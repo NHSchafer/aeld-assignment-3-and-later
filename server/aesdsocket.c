@@ -70,11 +70,20 @@ int main( int argc, char **argv)
 	const char *filepath = "/var/tmp/aesdsocketdata";
 	FILE *temp_fd;
 
+	bool create_d = false;
 	//signal handling vars
         struct sigaction new_action;
         //bool success = true;
         memset( &new_action, 0, sizeof(struct sigaction));
         new_action.sa_handler=signal_handler;
+
+	//check command line arguments
+	if(argc > 1){
+	    if(!strcmp("-d", argv[1]))
+		create_d = true;
+	}
+	syslog(LOG_DEBUG, "Deamon will be created = %d ", create_d);
+
 
 
 	//setup SIGTERM and SIGINT handler
@@ -100,27 +109,31 @@ int main( int argc, char **argv)
 
 
 	if ((rv = getaddrinfo(NULL, PORT, &hints, &servinfo)) != 0) {
-		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
-		return 1;
+		syslog(LOG_ERR, "Server: getaddrinfo - Error %d (%s)", errno, strerror(errno));
+		//fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
+		return -1;
 	}
 
 	// loop through all the results and bind to the first we can
 	for(p = servinfo; p != NULL; p = p->ai_next) {
 		if ((sockfd = socket(p->ai_family, p->ai_socktype,
 				p->ai_protocol)) == -1) {
-			perror("server: socket");
+			syslog(LOG_ERR, "Server: socket - Error %d (%s)", errno, strerror(errno));
+			//perror("server: socket");
 			continue;
 		}
 
 		if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &yes,
 				sizeof(int)) == -1) {
-			perror("setsockopt");
+			syslog(LOG_ERR, "Server: setsockopt - Error %d (%s)", errno, strerror(errno));
+			//perror("setsockopt");
 			exit(-1);
 		}
 
 		if (bind(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
 			close(sockfd);
-			perror("server: bind");
+			syslog(LOG_ERR, "Server: bind - Error %d (%s)", errno, strerror(errno));
+			//perror("server: bind");
 			continue;
 		}
 
@@ -130,13 +143,26 @@ int main( int argc, char **argv)
 	freeaddrinfo(servinfo); // all done with this structure
 
 	if (p == NULL)  {
-		fprintf(stderr, "server: failed to bind\n");
+		syslog(LOG_ERR, "Server: failed to bind - Error %d (%s)", errno, strerror(errno));
+		//fprintf(stderr, "server: failed to bind\n");
 		exit(-1);
 	}
 
+	//create deamon
+	if(create_d){
+	    if(fork()){//parent process
+		exit(0);
+	    }else{//child process
+	        setsid();
+	    }
+	
+	}
+
+	
 //listen for connection
 	if (listen(sockfd, BACKLOG) == -1) {
-		perror("listen");
+		syslog(LOG_ERR, "listen - Error %d (%s)", errno, strerror(errno));
+		//perror("listen");
 		exit(-1);
 	}
 
@@ -171,25 +197,25 @@ int main( int argc, char **argv)
 		inet_ntop(their_addr.ss_family,
 			get_in_addr((struct sockaddr *)&their_addr),
 			s, sizeof s);
-		printf("server: got connection from %s\n", s);
+		//printf("server: got connection from %s\n", s);
 		syslog(LOG_INFO, "Accepted connection from %s\n", s);
 
 		//open file
 		temp_fd = fopen(filepath, "ab+");
 		//error check on file open and log message
 	        if(temp_fd == NULL)//error check
-   	        {
-       		    syslog(LOG_ERR, "fopen failure\n");
+   	        {	
+		    syslog(LOG_ERR, "Server: file open - Error %d (%s)", errno, strerror(errno));
         	    //printf("Error on file open\n");
         	    return -1;
     		}
-		syslog(LOG_DEBUG, "Moving to receive data\n");
+		//syslog(LOG_DEBUG, "Moving to receive data\n");
 
 		//recieve data and save to file
 		do{
 		    if ((numbytes = recv(new_fd, buf, MAXDATASIZE-1, 0)) == -1) {
-        	        perror("recv");
-			syslog(LOG_DEBUG, "Failed receive data: %d\n", numbytes);
+        	        //perror("recv");
+		        syslog(LOG_ERR, "Server: recv - Error %d (%s)", errno, strerror(errno));
        		        //exit(-1);
 
 	            }else{
@@ -198,7 +224,7 @@ int main( int argc, char **argv)
     			//fr = fprintf(fd, "%s", buf);
     			if(fwrite(buf, 1, numbytes, temp_fd)<0)
     			{
-    			    syslog(LOG_ERR, "Writing failure\n");
+		            syslog(LOG_ERR, "Server: fwrite - Error %d (%s)", errno, strerror(errno));
     			    //printf("Error on writing to file\n");
     			    return -1;
 
@@ -214,9 +240,8 @@ int main( int argc, char **argv)
 		rewind(temp_fd);//return to beginning of file
 		while((numbytes = fread(buf, 1, MAXDATASIZE, temp_fd)))
 		{
-     		    syslog(LOG_DEBUG, "Read %d bytes\n", numbytes);
 		    if(send(new_fd, buf, numbytes, 0) == -1)
-    			syslog(LOG_ERR, "Sending failure\n");
+		        syslog(LOG_ERR, "Server: send - Error %d (%s)", errno, strerror(errno));
 
 
 		
@@ -235,7 +260,6 @@ int main( int argc, char **argv)
 //		close(new_fd);  // parent doesn't need this
 //
 		syslog(LOG_INFO, "Closed connection from %s\n", s);
-		syslog(LOG_DEBUG, "SigInt %d & SigTerm %d\n", caught_sigint, caught_sigterm);
 	        
 	}
       	syslog(LOG_DEBUG, "Outside main loop");
